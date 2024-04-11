@@ -262,6 +262,10 @@ def TT_LoadOp : TT_Op<"load", [
         // A tensor pointer with boundary check and padding
         OpBuilder<(ins "Value":$ptr, "ArrayRef<int32_t>":$boundaryCheck,
                        "std::optional<triton::PaddingOption>":$padding, "triton::CacheModifier":$cache,
+                       "triton::EvictionPolicy":$evict, "bool":$isVolatile)>,                       
+        // A tensor pointer with boundary check and other
+        OpBuilder<(ins "Value":$ptr, "ArrayRef<int32_t>":$boundaryCheck,
+                       "Value":$other, "triton::CacheModifier":$cache,
                        "triton::EvictionPolicy":$evict, "bool":$isVolatile)>,
         // A tensor of pointers or a pointer to a scalar with mask
         OpBuilder<(ins "Value":$ptr, "Value":$mask, "triton::CacheModifier":$cache,

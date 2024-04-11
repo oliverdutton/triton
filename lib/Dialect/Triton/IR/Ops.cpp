@@ -60,6 +60,14 @@ void LoadOp::build(OpBuilder &builder, OperationState &state, Value ptr,
 }
 
 void LoadOp::build(OpBuilder &builder, OperationState &state, Value ptr,
+                   ArrayRef<int32_t> boundaryCheck,
+                   Value other, CacheModifier cache,
+                   EvictionPolicy evict, bool isVolatile) {
+  LoadOp::build(builder, state, ptr, /*mask=*/{}, other, boundaryCheck,
+                /*padding=*/std::nullopt, cache, evict, isVolatile);
+}
+
+void LoadOp::build(OpBuilder &builder, OperationState &state, Value ptr,
                    Value mask, CacheModifier cache, EvictionPolicy evict,
                    bool isVolatile) {
   LoadOp::build(builder, state, ptr, mask, /*other=*/{},

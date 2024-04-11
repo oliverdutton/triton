@@ -942,9 +942,11 @@ def _canonicalize_boundary_check(boundary_check, block_shape):
 
 def _load_block_pointer(ptr, mask, other, boundary_check, padding, cache, eviction, is_volatile, builder):
     # Load by a block pointer: `pointer_type<block_type<>>`
-    # Block pointer can not have `mask` and `other` arguments
-    if mask or other:
-        raise ValueError("`mask` and `other` arguments cannot be specified for loading block pointers")
+    # Block pointer can not have `mask` argument
+    if mask:
+        raise ValueError("`mask` argument cannot be specified for loading block pointers")
+    if other and padding:
+        raise ValueError("Only one of `other` and `padding` argument can be specified for loading block pointers")
 
     elt_ty = ptr.type.element_ty.element_ty
     assert elt_ty != tl.int1, "`tl.int1` should be rewrited in `tl.make_block_ptr`"
@@ -953,13 +955,28 @@ def _load_block_pointer(ptr, mask, other, boundary_check, padding, cache, evicti
 
     # `dst_ty` is de-referenced type of the pointer type
     dst_ty = ptr.type.element_ty
+    block_shape = dst_ty.get_block_shapes()
 
     # Check `boundary_check` argument
-    boundary_check = _canonicalize_boundary_check(boundary_check, dst_ty.get_block_shapes())
+    boundary_check = _canonicalize_boundary_check(boundary_check, block_shape)
 
+    if other is not None:
+        if not other.type.is_block():
+            other = broadcast_impl_shape(other, block_shape, builder)
+        # Cast to target data type
+        other = cast(other, elt_ty, builder)
+
+        assert other.type.is_block(), "Other argument must be block type or a scalar"
+        assert block_shape == other.type.get_block_shapes(
+        ), f"Block shape({block_shape}) and other shape({other.type.get_block_shapes()}) mismatch"
+        assert dst_ty.element_ty == other.type.element_ty, f"Block element type({dst_ty.element_ty}) and other element type({other.type.element_ty}) mismatch"
+
+        elt_ty = dst_ty.element_ty
+        assert elt_ty != tl.int1, "`tl.int1` should be rewrited in `tl.make_block_ptr`"
+    
     # Build IR
     return tl.tensor(
-        builder.create_tensor_pointer_load(ptr.handle, boundary_check, padding, cache, eviction, is_volatile), dst_ty)
+        builder.create_tensor_pointer_load(ptr.handle, boundary_check, other.handle if other else None, padding, cache, eviction, is_volatile), dst_ty)
 
 
 def _load_legacy(ptr, mask, other, boundary_check, padding, cache, eviction, is_volatile, builder):
@@ -1040,7 +1057,7 @@ def _store_block_pointer(ptr, val, mask, boundary_check, cache, eviction, builde
     # Store by a block pointer: `pointer_type<block_type<>>`
     # Block pointers can not have the `mask` argument
     if mask is not None:
-        raise ValueError("`mask` and `other` arguments cannot be specified for loading block pointers")
+        raise ValueError("`mask` argument cannot be specified for storing block pointers")
 
     # Check same shape and element type
     block_shape = ptr.type.element_ty.get_block_shapes()

@@ -1213,12 +1213,19 @@ void init_triton_ir(py::module &&m) {
       .def("create_tensor_pointer_load",
            [](TritonOpBuilder &self, Value &ptr,
               std::vector<int32_t> &boundaryCheck,
-              std::optional<PaddingOption> paddingOption,
+              std::optional<Value> &other,
+              std::optional<PaddingOption> paddingOption,           
               CacheModifier cacheModifier, EvictionPolicy evictionPolicy,
               bool isVolatile) -> Value {
-             return self.create<LoadOp>(ptr, boundaryCheck, paddingOption,
+              if (paddingOption.has_value()) {
+                return self.create<LoadOp>(ptr, boundaryCheck, paddingOption,
                                         cacheModifier, evictionPolicy,
                                         isVolatile);
+              } else {
+                return self.create<LoadOp>(ptr, boundaryCheck, other.value_or(Value()),
+                                        cacheModifier, evictionPolicy,
+                                        isVolatile);
+              }
            })
       .def("create_tensor_pointer_store",
            [](TritonOpBuilder &self, Value &ptr, Value &val,

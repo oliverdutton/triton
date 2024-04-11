@@ -292,7 +292,7 @@ public:
     // `other` while building IR from Python AST
     std::optional<ArrayRef<int>> boundaryCheck;
     if (auto loadOp = dyn_cast<triton::LoadOp>(op)) {
-      assert(!loadOp.getMask() && !loadOp.getOther());
+      assert(!loadOp.getMask());
       boundaryCheck = loadOp.getBoundaryCheck();
     } else if (auto storeOp = dyn_cast<triton::StoreOp>(op)) {
       assert(!storeOp.getMask());
@@ -303,8 +303,12 @@ public:
     auto newPtr = info.generatePtr(builder, op->getLoc());
     auto newMask = info.generateMask(builder, op->getLoc(), boundaryCheck);
     Value newOther;
-    if (auto loadOp = dyn_cast<triton::LoadOp>(op))
-      newOther = info.generateOther(builder, op->getLoc(), loadOp.getPadding());
+    if (!loadOp.getOther()) {
+      if (auto loadOp = dyn_cast<triton::LoadOp>(op))
+        newOther = info.generateOther(builder, op->getLoc(), loadOp.getPadding());
+    } else {
+      newOther = loadOp.getOther();
+    }
 
     // Create a new operation
     if (auto loadOp = dyn_cast<triton::LoadOp>(op)) {
